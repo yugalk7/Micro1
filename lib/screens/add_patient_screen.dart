@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/database_helper.dart';
 import '../data/models/patient.dart';
+import '../core/theme.dart';
 
 class AddPatientScreen extends StatefulWidget {
   const AddPatientScreen({super.key});
@@ -24,26 +25,41 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
     setState(() => loading = true);
 
-    final patient = Patient(
-      name: nameController.text.trim(),
-      age: int.parse(ageController.text.trim()),
-      weight: double.parse(weightController.text.trim()),
-      temperature: double.parse(tempController.text.trim()),
-      lastVisit: DateTime.now().toString(),
-      synced: 0,
-    );
+    try {
+      final patient = Patient(
+        name: nameController.text.trim(),
+        age: int.parse(ageController.text.trim()),
+        weight: double.parse(weightController.text.trim()),
+        temperature: double.parse(tempController.text.trim()),
+        lastVisit: DateTime.now().toString().split(' ')[0],
+        synced: 0,
+      );
 
-    await DatabaseHelper.instance.insertPatient(patient);
+      await DatabaseHelper.instance.insertPatient(patient);
 
-    setState(() => loading = false);
+      if (!mounted) return;
 
-    if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("✓ Patient added successfully"),
+          backgroundColor: AppTheme.lowRiskGreen,
+          duration: Duration(seconds: 2),
+        ),
+      );
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Patient Added Successfully")));
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
 
-    Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: ${e.toString()}"),
+          backgroundColor: AppTheme.highRiskRed,
+        ),
+      );
+    } finally {
+      setState(() => loading = false);
+    }
   }
 
   @override
@@ -58,58 +74,169 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Add Patient")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: const Text("Add New Patient")),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header Section
+              Text(
+                "Patient Information",
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Fill in the patient details below",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 28),
+
+              // Patient Name Field
               _inputField(
                 controller: nameController,
                 label: "Patient Name",
-                validator: (value) =>
-                    value!.isEmpty ? "Enter patient name" : null,
+                icon: Icons.person_outline,
+                keyboardType: TextInputType.text,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return "Please enter patient name";
+                  }
+                  if (value.length < 2) {
+                    return "Name must be at least 2 characters";
+                  }
+                  return null;
+                },
               ),
-
               const SizedBox(height: 16),
 
-              _inputField(
-                controller: ageController,
-                label: "Age",
-                keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? "Enter age" : null,
+              // Age and Weight Row
+              Row(
+                children: [
+                  Expanded(
+                    child: _inputField(
+                      controller: ageController,
+                      label: "Age (years)",
+                      icon: Icons.cake_outlined,
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Required";
+                        }
+                        final age = int.tryParse(value);
+                        if (age == null || age < 0 || age > 150) {
+                          return "Invalid age";
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _inputField(
+                      controller: weightController,
+                      label: "Weight (kg)",
+                      icon: Icons.scale_outlined,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Required";
+                        }
+                        final weight = double.tryParse(value);
+                        if (weight == null || weight <= 0 || weight > 500) {
+                          return "Invalid weight";
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
               ),
-
               const SizedBox(height: 16),
 
-              _inputField(
-                controller: weightController,
-                label: "Weight (kg)",
-                keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? "Enter weight" : null,
-              ),
-
-              const SizedBox(height: 16),
-
+              // Temperature Field
               _inputField(
                 controller: tempController,
-                label: "Temperature (°F)",
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value!.isEmpty ? "Enter temperature" : null,
-              ),
-
-              const SizedBox(height: 30),
-
-              ElevatedButton(
-                onPressed: loading ? null : savePatient,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
+                label: "Temperature (°C)",
+                icon: Icons.thermostat_outlined,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
-                child: loading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Save Patient"),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return "Please enter temperature";
+                  }
+                  final temp = double.tryParse(value);
+                  if (temp == null) {
+                    return "Invalid temperature";
+                  }
+                  if (temp < 35 || temp > 42) {
+                    return "Temperature should be 35-42°C";
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 32),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: loading ? null : savePatient,
+                  child: loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.save_outlined),
+                            SizedBox(width: 8),
+                            Text("Save Patient"),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Info Box
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGreen,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.primaryGreen),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: AppTheme.primaryGreen,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "All data is stored offline and will sync automatically",
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.primaryGreen,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -121,6 +248,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   Widget _inputField({
     required TextEditingController controller,
     required String label,
+    required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     required String? Function(String?) validator,
   }) {
@@ -130,7 +258,16 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
+        prefixIcon: Icon(icon),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.primaryGreen, width: 2),
+        ),
       ),
     );
   }

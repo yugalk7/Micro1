@@ -6,6 +6,7 @@ class Patient {
   final double temperature;
   final String lastVisit;
   final int synced;
+  final String createdAt;
 
   Patient({
     this.id,
@@ -15,7 +16,8 @@ class Patient {
     required this.temperature,
     required this.lastVisit,
     this.synced = 0,
-  });
+    String? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now().toIso8601String();
 
   /// SQLite → Map
   Map<String, dynamic> toMap() {
@@ -27,6 +29,7 @@ class Patient {
       'temperature': temperature,
       'lastVisit': lastVisit,
       'synced': synced,
+      'createdAt': createdAt,
     };
   }
 
@@ -40,6 +43,7 @@ class Patient {
       temperature: map['temperature'],
       lastVisit: map['lastVisit'],
       synced: map['synced'],
+      createdAt: map['createdAt'] ?? DateTime.now().toIso8601String(),
     );
   }
 
@@ -51,7 +55,7 @@ class Patient {
       'weight': weight,
       'temperature': temperature,
       'lastVisit': lastVisit,
-      'createdAt': DateTime.now().toIso8601String(),
+      'createdAt': createdAt,
     };
   }
 }

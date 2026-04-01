@@ -27,6 +27,8 @@ dependencies:
   google_maps_flutter: ^2.16.0
   percent_indicator: ^4.2.5
   shared_preferences: ^2.5.5
+  telephony:
+    path: plugins/telephony
  
 
 dev_dependencies:
